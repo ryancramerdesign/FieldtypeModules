@@ -1,0 +1,182 @@
+<?php
+
+/**
+ * ProcessWire Modules (plural) Fieldtype
+ *
+ * Field that stores reference to one or more other modules. 
+ *
+ * This is similar to FieldtypeModule except that it stores multiple modules.
+ * It uses asmSelect to make the selection sortable/searchable.
+ *
+ * ProcessWire 2.x 
+ * Copyright (C) 2012 by Ryan Cramer 
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ * 
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class FieldtypeModules extends FieldtypeMulti {
+
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'Modules Reference (multiple)',
+			'version' => 100,
+			'summary' => 'Field that stores a reference to one or more other modules and makes them sortable.',
+			'permanent' => false, 
+			);
+	}
+
+	public function getBlankValue(Page $page, Field $field) {
+		return array();
+	}
+
+	public function sanitizeValue(Page $page, Field $field, $value) {
+
+		if(!$value) return null;
+		if(!is_array($value)) $value = array($value); 
+
+		foreach($value as $k => $v) {
+			// we allow integers
+			if(is_int($v) && $this->modules->getModuleClass($v)) continue; 
+
+			// we allow modules
+			if($v instanceof Module) continue;
+
+			// but we don't allow anything else
+			unset($value[$k]); 
+		}
+
+		return $value; 
+	}
+
+	public function ___wakeupValue(Page $page, Field $field, $value) {
+
+		$v = $this->getBlankValue($page, $field);
+
+		if(empty($value)) return $v; 
+
+		foreach($value as $moduleID) {
+			$v[] = (int) $moduleID; 
+		}	
+
+		return $v; 
+	}
+
+	public function ___sleepValue(Page $page, Field $field, $value) {
+
+		$a = array();
+
+		foreach($value as $module) {
+			if(is_int($module)) $moduleID = $module; 
+				else $moduleID = $this->fuel('modules')->getModuleID($module); 
+			$a[] = $moduleID; 
+		}
+
+		return $a; 
+	}
+
+	/**
+	 * Instantiate the modules 
+	 *
+	 * This method is only used when $page->outputFormatting is true. 
+	 *
+	 */
+	public function ___formatValue(Page $page, Field $field, $value) {
+
+		foreach($value as $k => $v) {
+			if(!is_int($v)) continue; 
+			$module = $this->fuel('modules')->get($v); 
+			if($module) {
+				$value[$k] = $module; 
+			} else {
+				unset($value[$k]); 
+			}
+		}
+
+		return $value; 
+	}
+
+	public function getInputfield(Page $page, Field $field) {
+
+		$inputfield = $this->modules->get('InputfieldAsmSelect'); 
+		$inputfield->attr('name', $field->name); 
+
+		if(!empty($field->moduleTypes)) {
+			$selector = "className^=";
+			foreach($field->moduleTypes as $moduleType) $selector .= implode('|', $field->moduleTypes); 
+			$selector = rtrim($moduleType, '|'); 
+			$modules = $this->fuel('modules')->find($selector); 
+		} else {
+			$modules = $this->fuel('modules'); 
+		}
+
+		foreach($modules as $module) {
+
+			$id = $this->fuel('modules')->getModuleID($module); 
+			$class = $module->className();
+
+			if($field->labelType) { 
+				$info = $this->fuel('modules')->getModuleInfo($module); 
+				if($field->labelType == 1) $label = $info['title']; // labelType=1
+					else $label = "$class: $info[title]"; // labelType=2
+			} else {
+				$label = $class; // labelType=0
+			}
+
+			$inputfield->addOption($id, $label); 
+		}
+
+		return $inputfield; 
+	}
+
+	public function getDatabaseSchema(Field $field) {
+		$schema = parent::getDatabaseSchema($field); 
+		$schema['data'] = 'int NOT NULL';
+		$schema['keys']['data'] = 'KEY data (data, pages_id, sort)';
+		return $schema;
+	}
+
+	public function ___getCompatibleFieldtypes(Field $field) {
+		$fieldtypes = new Fieldtypes();
+		return $fieldtypes;
+	}
+
+	public function ___getConfigInputfields(Field $field) {
+
+		$inputfields = parent::___getConfigInputfields($field); 
+		$moduleTypes = array();
+		$lastType = '';
+
+		$f = $this->modules->get("InputfieldCheckboxes"); 
+		$f->attr('name', 'moduleTypes'); 
+
+		foreach($this->modules as $module) {
+			if(!preg_match('/^([A-Za-z][a-z0-9_]+)/', $module->className(), $matches)) continue; 
+			$moduleType = $matches[1];
+			if($moduleType == $lastType) continue; 	
+			$f->addOption($moduleType); 
+			$lastType = $moduleType; 
+		}
+
+		$f->attr('value', is_array($field->moduleTypes) ? $field->moduleTypes : array()); 
+		$f->label = "Module Types";
+		$f->description = "Check all of the module types that may be selectable in this field. If none are selected, then all types will be allowed.";
+		$inputfields->append($f); 
+
+		$f = $this->modules->get("InputfieldRadios"); 
+		$f->attr('name', 'labelType'); 
+		$f->attr('value', is_null($field->labelType) ? 0 : (int) $field->labelType);  // 0=class, 1=title, 2=class:title
+		$f->label = "Module Selection Label"; 
+		$f->description = "What module information will serve as it's label when being selected?";
+		$f->addOption(0, "Class"); 
+		$f->addOption(1, "Title"); 
+		$f->addOption(2, "Class + Title"); 
+		$inputfields->append($f);
+
+		return $inputfields; 			
+	}
+
+}
+

@@ -1,0 +1,12 @@
+ProcessWire Modules Fieldtype
+
+Fieldtype that stores reference to one or more other modules. 
+
+This is similar to FieldtypeModule except that it stores multiple modules.
+It uses asmSelect to make the selection sortable/searchable.
+
+To install copy to /site/modules/ and go to Admin > Modules > Check for new modules. 
+
+Note the configuration settings that appear on the details tab when creating
+a new field that uses this module. 
+
