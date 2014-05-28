@@ -22,7 +22,7 @@ class FieldtypeModules extends FieldtypeMulti {
 	public static function getModuleInfo() {
 		return array(
 			'title' => 'Modules Reference (multiple)',
-			'version' => 101,
+			'version' => 102,
 			'summary' => 'Field that stores a reference to one or more other modules and makes them sortable.',
 			'permanent' => false, 
 			);
@@ -107,7 +107,7 @@ class FieldtypeModules extends FieldtypeMulti {
 		if(!empty($field->moduleTypes)) {
 			$selector = "className^=";
 			foreach($field->moduleTypes as $moduleType) $selector .= implode('|', $field->moduleTypes); 
-			$selector = rtrim($moduleType, '|'); 
+			$selector = rtrim($selector, '|'); 
 			$modules = $this->fuel('modules')->find($selector); 
 		} else {
 			$modules = $this->fuel('modules'); 
