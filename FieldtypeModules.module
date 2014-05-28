@@ -22,7 +22,7 @@ class FieldtypeModules extends FieldtypeMulti {
 	public static function getModuleInfo() {
 		return array(
 			'title' => 'Modules Reference (multiple)',
-			'version' => 100,
+			'version' => 101,
 			'summary' => 'Field that stores a reference to one or more other modules and makes them sortable.',
 			'permanent' => false, 
 			);
@@ -34,7 +34,7 @@ class FieldtypeModules extends FieldtypeMulti {
 
 	public function sanitizeValue(Page $page, Field $field, $value) {
 
-		if(!$value) return null;
+		if(!$value) return array();
 		if(!is_array($value)) $value = array($value); 
 
 		foreach($value as $k => $v) {
@@ -73,6 +73,7 @@ class FieldtypeModules extends FieldtypeMulti {
 				else $moduleID = $this->fuel('modules')->getModuleID($module); 
 			$a[] = $moduleID; 
 		}
+
 
 		return $a; 
 	}
@@ -127,6 +128,7 @@ class FieldtypeModules extends FieldtypeMulti {
 
 			$inputfield->addOption($id, $label); 
 		}
+		$inputfield->attr('value', array()); 
 
 		return $inputfield; 
 	}
