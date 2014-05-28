@@ -22,7 +22,7 @@ class FieldtypeModules extends FieldtypeMulti {
 	public static function getModuleInfo() {
 		return array(
 			'title' => 'Modules Reference (multiple)',
-			'version' => 102,
+			'version' => 104,
 			'summary' => 'Field that stores a reference to one or more other modules and makes them sortable.',
 			'permanent' => false, 
 			);
@@ -105,12 +105,18 @@ class FieldtypeModules extends FieldtypeMulti {
 		$inputfield->attr('name', $field->name); 
 
 		if(!empty($field->moduleTypes)) {
-			$selector = "className^=";
-			foreach($field->moduleTypes as $moduleType) $selector .= implode('|', $field->moduleTypes); 
-			$selector = rtrim($selector, '|'); 
-			$modules = $this->fuel('modules')->find($selector); 
+			$modules = array();
+
+			foreach($this->wire('modules') as $module) {
+				foreach($field->moduleTypes as $moduleType) {
+					if(strpos($module->className(), $moduleType) === 0) {
+						$modules[] = $module; 
+					}
+				}
+			}
+
 		} else {
-			$modules = $this->fuel('modules'); 
+			$modules = $this->wire('modules'); 
 		}
 
 		foreach($modules as $module) {
@@ -119,7 +125,7 @@ class FieldtypeModules extends FieldtypeMulti {
 			$class = $module->className();
 
 			if($field->labelType) { 
-				$info = $this->fuel('modules')->getModuleInfo($module); 
+				$info = $this->wire('modules')->getModuleInfo($module); 
 				if($field->labelType == 1) $label = $info['title']; // labelType=1
 					else $label = "$class: $info[title]"; // labelType=2
 			} else {
